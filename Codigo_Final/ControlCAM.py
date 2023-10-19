@@ -1,6 +1,8 @@
 
 import pytesseract
 import cv2
+import pytz
+from datetime import datetime
 
 def detectar_carro_Bicileta(source):
     cascade_src = 'Detectar Carro/Main Project/Main Project/Car Detection/cars.xml'
@@ -12,7 +14,7 @@ def detectar_carro_Bicileta(source):
 
     num_consecutive_frames = 100
     consecutive_frame_count = 0
-    total_time_seconds = 0
+    tempo_total_segundos = 0
 
     while True:
         ret, img = cap.read()
@@ -38,11 +40,11 @@ def detectar_carro_Bicileta(source):
         cv2.imshow('video', img)
 
         fps = cap.get(cv2.CAP_PROP_FPS)
-        total_time_seconds = cap.get(cv2.CAP_PROP_POS_FRAMES) / fps
+        tempo_total_segundos = cap.get(cv2.CAP_PROP_POS_FRAMES) / fps
         
         if consecutive_frame_count >= num_consecutive_frames:
             print("Veiculo detectado!")
-            print("Tempo total do vídeo até a detecção: {:.2f} segundos".format(total_time_seconds))
+            print("Tempo total do vídeo até a detecção: {:.2f} segundos".format(tempo_total_segundos))
             break
 
         if cv2.waitKey(33) == 27 and 0xFF == ord('q'):
@@ -51,7 +53,7 @@ def detectar_carro_Bicileta(source):
     cap.release()
     cv2.destroyAllWindows()
 
-    return total_time_seconds
+    return tempo_total_segundos
 
 def desenhaContornos(contornos, imagem):
     for c in contornos:
@@ -67,7 +69,7 @@ def desenhaContornos(contornos, imagem):
                 cv2.rectangle(imagem, (x, y), (x + lar, y + alt), (0, 255, 0), 2)
                 
                 roi = imagem[y:y + alt, x:x + lar]
-                cv2.imwrite(r'C:\Users\cpuG\Pictures\Placas_De_Carro\roi.png', roi)
+                cv2.imwrite('Resource/placa.png', roi)
 
 
 def buscaRetanguloPlaca(source):
@@ -108,12 +110,11 @@ def buscaRetanguloPlaca(source):
             break
 
     video.release()
-    preProcessamentoRoi()
     cv2.destroyAllWindows()
 
 
 def preProcessamentoRoi():
-    img_roi = cv2.imread(r'C:\Users\cpuG\Pictures\Placas_De_Carro\roi.png')
+    img_roi = cv2.imread('Resource/placa.png')
     
     if img_roi is None:
         return
@@ -127,13 +128,12 @@ def preProcessamentoRoi():
 
     img = cv2.GaussianBlur(img, (5, 5), 0)
 
-    cv2.imwrite('Resource/roi.png', img)
+    cv2.imwrite('Resource/placa_processada.png', img)
 
     return img
 
-
 def reconhecimentoOCR():
-    img_roi_ocr = cv2.imread('Resource/roi.png')
+    img_roi_ocr = cv2.imread('Resource/placa_processada.png')
     if img_roi_ocr is None:
         return
 
@@ -141,9 +141,13 @@ def reconhecimentoOCR():
     saida = pytesseract.image_to_string(img_roi_ocr, lang='eng', config=config)
 
 
-    print(saida.splitlines()[0])
     return saida.splitlines()[0]
 
+def hora_atual():
+    brasilia_tz = pytz.timezone('America/Sao_Paulo')
+    horario_brasilia = datetime.now(brasilia_tz)
+    horario_formatado = horario_brasilia.strftime('%Y-%m-%d %H:%M:%S %Z%z')
+    return horario_formatado
 
 if __name__ == "__main__":
     source = 'Resource/Arquivo_Camera_Principal.mkv'
@@ -153,4 +157,7 @@ if __name__ == "__main__":
     if tempo_detectado > 0:
         buscaRetanguloPlaca(source)
         preProcessamentoRoi()
-        reconhecimentoOCR()
+        placa_final = reconhecimentoOCR()
+        hora_leitura = hora_atual()
+        print(placa_final, '\n', hora_leitura, '\n')
+        
